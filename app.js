@@ -12,9 +12,9 @@ const app = express();
 
 
 app.use(
-    cors({ // Cross-Origin Resource Sharing (CORS)
-      credentials: true, // the server should include credentials (such as cookies or HTTP authentication) in the CORS response.
-      origin: process.env.FRONTEND_URL //  specifies the allowed origin for CORS requests.
+    cors({
+      credentials: true,
+      origin: process.env.FRONTEND_URL
     })
 );
 

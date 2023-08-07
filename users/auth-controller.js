@@ -1,40 +1,42 @@
 import * as usersDao from "./users-dao.js";
 
+var currentUserVar;
 const AuthController = (app) => {
-  const register = (req, res) => {
+  const register = async (req, res) => {
     const username = req.body.username;
-    const user = usersDao.findUserByUsername(username);
+    const user = await usersDao.findUserByUsername(username);
     if (user) {
-      console.log("Username already exists");
-      return res.status(409).send({ error: "Username already exists" });
+      res.sendStatus(409);
+      return;
     }
-    const newUser =  { _id: new Date().getTime() + "", firstName:req.body.firstName, lastName:req.body.lastName, username:req.body.username, password:req.body.password }
-    usersDao.createUser(newUser);
-    req.session["currentUser"] = newUser;
+    const newUser = await usersDao.createUser(req.body);
+    currentUserVar = newUser;
     res.json(newUser);
-    console.log("User registered");
   };
 
-  const login = (req, res) => {
+
+  const login = async (req, res) => {
     const username = req.body.username;
     const password = req.body.password;
-    const user = usersDao.findUserByCredentials(username, password);
-    if (user !== null) {
-      req.session["currentUser"] = user;
-      res.json(user);
-      console.log("User logged in");
+    if (username && password) {
+      const user = await usersDao.findUserByCredentials(username, password);
+      if (user) {
+        currentUserVar = user;
+        res.json(user);
+        // console.log("User logged in: " + user.username);
+        } else {
+          res.sendStatus(404);
+        }
     } else {
-      res.sendStatus(404);
-      console.log("User not found");
+        res.sendStatus(404);
     }
   };
 
-
-  const profile = (req, res) => {
-    const currentUser = req.session["currentUser"];
+  const profile = async (req, res) => {
+    const currentUser = currentUserVar
     if (!currentUser) {
-      console.log("Unauthorized before reaching profile");
-      return res.status(401).send({ error: "Unauthorized before reaching profile" }); // Unauthorized
+      res.sendStatus(404);
+      return;
     }
     res.json(currentUser);
   };
@@ -42,31 +44,19 @@ const AuthController = (app) => {
   const logout = async (req, res) => {
     req.session.destroy();
     res.sendStatus(200);
-    console.log("User logged out");
+    // console.log("User logged out: " + currentUserVar.username);
   };
 
-  // update user's first and lastname via the profile screen
   const update = (req, res) => {
-    const currentUser = req.session["currentUser"];
-    if (!currentUser) {
-      console.log("Unauthorized before update");
-      return res.status(401).send({ error: "Unauthorized before update" });
+    let currentUser = currentUserVar;
+    if(!currentUser){
+      return res.status(404).send({ error: "Please login first" });
     }
-
-    const updatedUser = req.body;
-    const updateResult = usersDao.updateUser(currentUser._id, updatedUser);
-
-    if (updateResult && updateResult.status === 'ok') {
-      // Update the current user in the session
-      req.session["currentUser"] = { ...currentUser, ...updatedUser };
-      res.sendStatus(200); // OK
-    }  else if (updateResult && updateResult.status === "not_found") {
-      console.log("User not found");
-      return res.status(404).send({ error: "User Not Found" });
-    } else {
-      console.log("Internal Server Error");
-      return res.status(500).send({ error: "Internal Server Error" });
-    }
+    // console.log(req.body);
+    currentUser = { ...currentUser, ...req.body };
+    usersDao.updateUser(currentUser._id, currentUser);
+    req.session["currentUser"] = currentUser;
+    res.json(currentUser);
   };
 
 
@@ -74,6 +64,9 @@ const AuthController = (app) => {
   app.post("/api/users/login", login);
   app.post("/api/users/profile", profile);
   app.post("/api/users/logout", logout);
-  app.put ("/api/users",   update);
+  app.put("/api/users", update);
+
 };
 export default AuthController;
+
+
