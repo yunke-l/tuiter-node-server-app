@@ -1,19 +1,18 @@
 import * as usersDao from "./users-dao.js";
 
-var currentUserVar;
 const AuthController = (app) => {
+
+
   const register = async (req, res) => {
-    const username = req.body.username;
-    const user = await usersDao.findUserByUsername(username);
+    const user = await usersDao.findUserByUsername(req.body.username);
     if (user) {
-      res.sendStatus(409);
+      res.sendStatus(403);
       return;
     }
     const newUser = await usersDao.createUser(req.body);
-    currentUserVar = newUser;
+    req.session["currentUser"] = newUser;
     res.json(newUser);
   };
-
 
   const login = async (req, res) => {
     const username = req.body.username;
@@ -21,19 +20,18 @@ const AuthController = (app) => {
     if (username && password) {
       const user = await usersDao.findUserByCredentials(username, password);
       if (user) {
-        currentUserVar = user;
+        req.session["currentUser"] = user;
         res.json(user);
-        // console.log("User logged in: " + user.username);
         } else {
-          res.sendStatus(404);
+          res.sendStatus(403);
         }
     } else {
-        res.sendStatus(404);
+        res.sendStatus(403);
     }
   };
 
   const profile = async (req, res) => {
-    const currentUser = currentUserVar
+    const currentUser = req.session["currentUser"];
     if (!currentUser) {
       res.sendStatus(404);
       return;
@@ -44,19 +42,17 @@ const AuthController = (app) => {
   const logout = async (req, res) => {
     req.session.destroy();
     res.sendStatus(200);
-    // console.log("User logged out: " + currentUserVar.username);
   };
 
-  const update = (req, res) => {
-    let currentUser = currentUserVar;
-    if(!currentUser){
-      return res.status(404).send({ error: "Please login first" });
+  const update = async (req, res) => {
+    const user = await usersDao.updateUser(req.body._id, req.body);
+    if (user) {
+      req.session["currentUser"] = { ...user, ...req.body };
+      const updatedUser = { ...req.body };
+      res.status(200).json({ user: updatedUser });
+    } else {
+      res.sendStatus(500);
     }
-    // console.log(req.body);
-    currentUser = { ...currentUser, ...req.body };
-    usersDao.updateUser(currentUser._id, currentUser);
-    req.session["currentUser"] = currentUser;
-    res.json(currentUser);
   };
 
 

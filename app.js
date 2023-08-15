@@ -16,7 +16,7 @@ mongoose.connect(CONNECTION_STRING);
 app.use(
     cors({
       credentials: true,
-      origin: ["http://localhost:3000", "https://a5--capable-marzipan-0a2656.netlify.app"],
+      origin: ["http://localhost:3000", "https://a6--capable-marzipan-0a2656.netlify.app"],
     })
 );
 
